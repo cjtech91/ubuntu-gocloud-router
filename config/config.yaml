@@ -1,0 +1,280 @@
+# GoCloud Router Configuration File
+
+system:
+  hostname: "gocloud-router"
+  timezone: "UTC"
+  log_level: "info"
+  log_file: "/var/log/gocloud/router.log"
+
+# Network Interfaces
+interfaces:
+  wan:
+    - name: "eth0"
+      type: "dhcp"  # dhcp, static, pppoe
+      ip: ""
+      netmask: ""
+      gateway: ""
+      dns: ["8.8.8.8", "8.8.4.4"]
+      metric: 100
+      weight: 10
+      enabled: true
+    
+    - name: "eth1"
+      type: "dhcp"
+      ip: ""
+      netmask: ""
+      gateway: ""
+      dns: ["1.1.1.1", "1.0.0.1"]
+      metric: 200
+      weight: 5
+      enabled: true
+  
+  lan:
+    - name: "eth2"
+      ip: "192.168.1.1"
+      netmask: "255.255.255.0"
+      dhcp_enabled: true
+      dhcp_start: "192.168.1.100"
+      dhcp_end: "192.168.1.200"
+      dhcp_lease_time: "24h"
+      enabled: true
+
+# Multi-WAN Configuration
+multi_wan:
+  enabled: true
+  mode: "load_balance"  # load_balance, failover, policy
+  failover:
+    check_interval: 30  # seconds
+    check_target: "8.8.8.8"
+    check_timeout: 5
+    retry_count: 3
+
+# VLANs
+vlans:
+  - id: 10
+    name: "Guest Network"
+    interface: "eth2"
+    ip: "192.168.10.1"
+    netmask: "255.255.255.0"
+    dhcp_enabled: true
+    dhcp_start: "192.168.10.100"
+    dhcp_end: "192.168.10.200"
+    isolated: true  # Guest isolation
+
+  - id: 20
+    name: "IoT Network"
+    interface: "eth2"
+    ip: "192.168.20.1"
+    netmask: "255.255.255.0"
+    dhcp_enabled: true
+    dhcp_start: "192.168.20.100"
+    dhcp_end: "192.168.20.200"
+    isolated: true
+
+# QoS Configuration
+qos:
+  enabled: true
+  total_bandwidth: "100mbit"
+  
+  classes:
+    - name: "High Priority"
+      priority: 1
+      min_rate: "20mbit"
+      max_rate: "100mbit"
+      applications: ["voip", "video-conference"]
+    
+    - name: "Normal"
+      priority: 3
+      min_rate: "10mbit"
+      max_rate: "80mbit"
+      applications: ["web", "email"]
+    
+    - name: "Low Priority"
+      priority: 5
+      min_rate: "5mbit"
+      max_rate: "50mbit"
+      applications: ["p2p", "torrent"]
+  
+  # Per-IP bandwidth limits
+  bandwidth_limits:
+    - ip: "192.168.1.100"
+      upload_max: "10mbit"
+      download_max: "50mbit"
+
+# Firewall Configuration
+firewall:
+  enabled: true
+  default_policy: "drop"  # accept, drop
+  
+  # Basic rules
+  rules:
+    - name: "Allow SSH"
+      protocol: "tcp"
+      dst_port: "22"
+      src_ip: "192.168.1.0/24"
+      action: "accept"
+    
+    - name: "Allow Web Interface"
+      protocol: "tcp"
+      dst_port: "8443"
+      src_ip: "192.168.1.0/24"
+      action: "accept"
+  
+  # Port forwarding
+  port_forwards:
+    - name: "Web Server"
+      external_port: "80"
+      internal_ip: "192.168.1.10"
+      internal_port: "80"
+      protocol: "tcp"
+      enabled: true
+  
+  # Security features
+  security:
+    arp_protection: true
+    dos_protection: true
+    syn_flood_protection: true
+    port_scan_detection: true
+    geo_blocking:
+      enabled: false
+      blocked_countries: ["CN", "RU"]
+
+# Captive Portal
+portal:
+  enabled: true
+  listen_addr: ":8080"
+  ssl_enabled: true
+  ssl_cert: "/etc/gocloud/certs/portal.crt"
+  ssl_key: "/etc/gocloud/certs/portal.key"
+  session_timeout: "24h"
+  redirect_url: "https://www.google.com"
+  
+  # Authentication methods
+  auth:
+    methods: ["password", "voucher"]  # password, sms, wechat, voucher
+    radius:
+      enabled: false
+      server: "127.0.0.1"
+      port: 1812
+      secret: "changeme"
+    ldap:
+      enabled: false
+      server: "ldap://127.0.0.1:389"
+      base_dn: "dc=example,dc=com"
+  
+  # Whitelisted domains (accessible without auth)
+  whitelist:
+    - "captive.apple.com"
+    - "connectivitycheck.gstatic.com"
+
+# VPN Configuration
+vpn:
+  wireguard:
+    enabled: false
+    interface: "wg0"
+    listen_port: 51820
+    address: "10.0.0.1/24"
+  
+  openvpn:
+    enabled: false
+    config_file: "/etc/openvpn/server.conf"
+  
+  ipsec:
+    enabled: false
+    config_file: "/etc/ipsec.conf"
+
+# DNS Configuration
+dns:
+  enabled: true
+  upstream_servers:
+    - "8.8.8.8"
+    - "8.8.4.4"
+    - "1.1.1.1"
+  
+  # DNS filtering
+  filtering:
+    enabled: true
+    block_ads: true
+    block_malware: true
+    custom_blocklist: "/etc/gocloud/blocklist.txt"
+
+# DHCP Configuration
+dhcp:
+  enabled: true
+  lease_time: "24h"
+  
+  # Static leases
+  static_leases:
+    - mac: "00:11:22:33:44:55"
+      ip: "192.168.1.10"
+      hostname: "server1"
+  
+  # DHCP options
+  options:
+    domain_name: "local"
+    ntp_servers: ["pool.ntp.org"]
+
+# Monitoring
+monitoring:
+  enabled: true
+  prometheus:
+    enabled: true
+    listen_addr: ":9090"
+  
+  grafana:
+    enabled: true
+    listen_addr: ":3000"
+  
+  # Traffic statistics
+  traffic_stats:
+    enabled: true
+    interval: 60  # seconds
+    retention: 7  # days
+
+# API Configuration
+api:
+  enabled: true
+  listen_addr: ":8443"
+  ssl_enabled: true
+  ssl_cert: "/etc/gocloud/certs/api.crt"
+  ssl_key: "/etc/gocloud/certs/api.key"
+  
+  # API authentication
+  auth:
+    enabled: true
+    type: "jwt"  # jwt, basic, oauth
+    jwt_secret: "changeme"
+    admin_username: "admin"
+    admin_password: "changeme"  # Change this!
+
+# Cloud Management
+cloud:
+  enabled: false
+  server_url: "https://cloud.example.com"
+  api_key: "your-api-key"
+  sync_interval: 300  # seconds
+
+# Backup Configuration
+backup:
+  enabled: true
+  auto_backup: true
+  backup_interval: "24h"
+  backup_location: "/var/backups/gocloud"
+  retention_days: 7
+
+# Logging
+logging:
+  syslog:
+    enabled: true
+    server: "localhost"
+    port: 514
+  
+  # Log categories
+  categories:
+    system: true
+    firewall: true
+    vpn: true
+    dhcp: true
+    dns: true
+    portal: true
+    traffic: true
